@@ -8,8 +8,27 @@ const [csvPath, outputDir] = Bun.argv.slice(2);
 
 if (!csvPath || !outputDir) {
   console.error("❌ Error: Missing arguments.");
-  console.log("Usage: bolo <path-to-csv> <output-directory>");
+  console.log("Usage: bolo <path-to-csv> <output-directory> [--voice <artist-name>]");
   process.exit(1);
+}
+
+// Optional voice artist name (e.g., "Alice", "Bob")
+const voiceArgIndex = Bun.argv.findIndex(arg => arg.startsWith("--voice"));
+let selectedVoice: string | undefined;
+if (voiceArgIndex !== -1 && Bun.argv[voiceArgIndex + 1]) {
+  const providedVoice = Bun.argv[voiceArgIndex + 1];
+  if (!providedVoice || !/^[A-Za-z\s]+$/.test(providedVoice)) {
+    console.error("❌ Error: Invalid voice name. Use a valid macOS system voice (e.g., 'Alice', 'Bob').");
+    process.exit(1);
+  }
+  selectedVoice = providedVoice;
+}
+
+if (!selectedVoice) {
+  // Default to first available voice if none specified
+  console.log("ℹ️ Using default voice.");
+} else {
+  console.log(`🎭 Selected voice: "${selectedVoice}"`);
 }
 
 try {
@@ -33,6 +52,10 @@ try {
   // 3. Loop through rows and convert to audio
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i];
+    if (!row) {
+      console.log(`⚠️ Skipping row ${i + 1}: Invalid data.`);
+      continue;
+    }
     // Get the first column item
     const text = row[0]?.trim();
 
@@ -47,8 +70,13 @@ try {
 
     console.log(`🎙️ Processing [${fileIndex}]: "${text.substring(0, 30)}${text.length > 30 ? '...' : ''}"`);
 
-    // 4. Execute the macOS native 'say' command
-    const process = Bun.spawn(["say", text, "-o", outputPath]);
+    // 4. Execute the macOS native 'say' command with optional voice selection
+    const sayArgs = ["say", text, "-o", outputPath];
+    if (selectedVoice) {
+      sayArgs.splice(1, 0, "-v", selectedVoice);
+    }
+
+    const process = Bun.spawn(sayArgs);
     
     // Wait for the current audio file to finish generating
     await process.exited;
