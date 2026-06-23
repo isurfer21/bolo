@@ -8,7 +8,7 @@ const [csvPath, outputDir] = Bun.argv.slice(2);
 
 if (!csvPath || !outputDir) {
   console.error("❌ Error: Missing arguments.");
-  console.log("Usage: bolo <path-to-csv> <output-directory> [--voice <artist-name>]");
+  console.log("Usage: bolo <path-to-csv> <output-directory> [--voice <artist-name>] [--rate <wpm-speed>]");
   process.exit(1);
 }
 
@@ -29,6 +29,22 @@ if (!selectedVoice) {
   console.log("ℹ️ Using default voice.");
 } else {
   console.log(`🎭 Selected voice: "${selectedVoice}"`);
+}
+
+// Optional voice over speed 
+// 120–140 wpm: Slower rate, excellent for careful listening or language learning.
+// 150–180 wpm: Comfortable default pace for standard narration.
+// 200–250 wpm: Faster pace, great for scanning or reviewing text quickly.
+// 300+ wpm: Highly accelerated speed for rapid playback.
+const rateArgIndex = Bun.argv.findIndex(arg => arg.startsWith("--rate"));
+let selectedRate: string | undefined;
+if (rateArgIndex !== -1 && Bun.argv[rateArgIndex + 1]) {
+  const providedRate = Bun.argv[rateArgIndex + 1];
+  if (!providedRate || !/^[0-9]+$/.test(providedRate)) {
+    console.error("❌ Error: Invalid wpm rate number. Use a valid macOS system rate (e.g., in between 120 to 300).");
+    process.exit(1);
+  }
+  selectedRate = providedRate;
 }
 
 try {
@@ -74,6 +90,9 @@ try {
     const sayArgs = ["say", text, "-o", outputPath];
     if (selectedVoice) {
       sayArgs.splice(1, 0, "-v", selectedVoice);
+    }
+    if (selectedRate) {
+      sayArgs.splice(1, 0, "-r", selectedRate);
     }
 
     const process = Bun.spawn(sayArgs);
